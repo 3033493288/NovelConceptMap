@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>小说概念地图生成器</title>
+    <meta charset="utf-8">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; background: #f5f7fa; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        textarea { width: 100%; height: 200px; font-family: monospace; margin: 1rem 0; padding: 0.5rem; }
+        button { background: #2c3e50; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; }
+        button:hover { background: #1e2b36; }
+        .map-container { margin-top: 2rem; background: #fff; border: 1px solid #ddd; padding: 1rem; overflow-x: auto; }
+        .error { color: red; }
+        pre { background: #eee; padding: 1rem; overflow-x: auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📖 小说概念地图生成器</h1>
+    <p>输入小说片段（如<strong>诡秘之主</strong>中关于南北大陆的描述），AI 将提取地理实体并生成可视化地图。</p>
+    <textarea id="novelText" placeholder="例如：&#10;南北大陆被迷雾之海隔开，北大陆有鲁恩王国、弗萨克帝国，南大陆有殖民地和原始森林。"></textarea>
+    <br>
+    <button onclick="generateMap()">✨ 生成概念地图</button>
+    <div id="result" class="map-container" style="display:none;">
+        <h3>🗺️ 概念地图</h3>
+        <div id="mermaidChart"></div>
+        <h4>原始数据（JSON）</h4>
+        <pre id="jsonData"></pre>
+    </div>
+</div>
+
+<script>
+    async function generateMap() {
+        const text = document.getElementById('novelText').value;
+        if (!text.trim()) {
+            alert('请输入小说内容');
+            return;
+        }
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+        document.getElementById('mermaidChart').innerHTML = '生成中...';
+        document.getElementById('jsonData').innerText = '';
+
+        try {
+            const response = await fetch('/api/generate_map', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ novel_text: text })
+            });
+            const data = await response.json();
+            if (data.error) {
+                document.getElementById('mermaidChart').innerHTML = `<span class="error">错误：${data.error}</span>`;
+                document.getElementById('jsonData').innerText = JSON.stringify(data, null, 2);
+                return;
+            }
+            // 将 nodes/links 转换成 Mermaid 流程图语法
+            const nodes = data.nodes || [];
+            const links = data.links || [];
+            let mermaidDef = 'graph TD;\n';
+            nodes.forEach(node => {
+                const safeNode = node.replace(/[^a-zA-Z\u4e00-\u9fa5]/g, '_');
+                mermaidDef += `    ${safeNode}["${node}"];\n`;
+            });
+            links.forEach(link => {
+                const source = link.source.replace(/[^a-zA-Z\u4e00-\u9fa5]/g, '_');
+                const target = link.target.replace(/[^a-zA-Z\u4e00-\u9fa5]/g, '_');
+                mermaidDef += `    ${source} -- "${link.label}" --> ${target};\n`;
+            });
+            mermaid.initialize({ startOnLoad: false });
+            mermaid.render('mermaidSvg', mermaidDef).then(({ svg }) => {
+                document.getElementById('mermaidChart').innerHTML = svg;
+            });
+            document.getElementById('jsonData').innerText = JSON.stringify(data, null, 2);
+        } catch (err) {
+            document.getElementById('mermaidChart').innerHTML = `<span class="error">请求失败：${err.message}</span>`;
+        }
+    }
+</script>
+</body>
+</html>
