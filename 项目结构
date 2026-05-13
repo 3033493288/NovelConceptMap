@@ -1,0 +1,8 @@
+NovelConceptMap/
+├── app.py                 # Flask 主程序（API + 前端）
+├── requirements.txt       # 依赖列表
+├── .env.example           # 环境变量模板
+├── .gitignore             # 忽略敏感文件
+├── README.md              # 详细使用说明
+└── templates/
+    └── index.html         # 网页测试界面
